@@ -24,14 +24,14 @@ See also ["Encodable trait objects"](https://github.com/rust-lang/rfcs/issues/66
 
 ## Serializable closures
 
-Trait object deserialization also unblocks the de/serialization of closures. Multiple distributed computing efforts<sup>2</sup> have benefitted from de/serializable closures, though so far doing this has been unsound and critically unsafe. 
+Trait object deserialization also unblocks the de/serialization of closures. Multiple distributed computing efforts<sup>2</sup> have benefited from de/serializable closures, though so far doing this has been unsound and critically unsafe. 
 
 See also ["Serializable Lambda expression"](https://github.com/rust-lang/rfcs/issues/1022).
 
 # Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
 
-The approach taken in a [work-in-progress PR](https://github.com/rust-lang/rust/pull/66113) is to create essentially a global array with [appending linkage](https://llvm.org/docs/LangRef.html#linkage-appending) that stores structs comprising the [`type_id`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/struct.TyCtxt.html#method.type_id_hash) of the trait object and a pointer to the vtable, for all materialized vtables. Unfortunately appending linkage isn't really implemented by LLVM yet besides for a couple of special variables, so I've used the old-school approach of emitting static variables into an [orphan section](https://sourceware.org/binutils/docs/ld/Orphan-Sections.html). The start and end of this section can be reliably retreived by user programs with help from the linker.
+The approach taken in a [work-in-progress PR](https://github.com/rust-lang/rust/pull/66113) is to create essentially a global array with [appending linkage](https://llvm.org/docs/LangRef.html#linkage-appending) that stores structs comprising the [`type_id`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/struct.TyCtxt.html#method.type_id_hash) of the trait object and a pointer to the vtable, for all materialized vtables. Unfortunately appending linkage isn't really implemented by LLVM yet besides for a couple of special variables, so I've used the old-school approach of emitting static variables into an [orphan section](https://sourceware.org/binutils/docs/ld/Orphan-Sections.html). The start and end of this section can be reliably retrieved by user programs with help from the linker.
 
 This array increases the size of libraries by a small amount; for example build/x86_64-apple-darwin/stage2 by ~1.3MiB i.e. ~0.2%. Thanks to `--gc-sections` on Linux and `/OPT:REF` on Windows, it's removed entirely from binaries that don't use it on those platforms. macOS's `-dead_strip` works a little differently, and the best solution I've found adds 16 bytes per used vtable to the resulting binary. This increases the size of binaries by a small amount: hello world grows by 76 bytes i.e. ~0.03%. With a bit more work I think this could probably be made zero-cost similar to Linux and Windows. Android and iOS behave the same as Linux and macOS, and on other platforms this PR is a no-op.
 
@@ -131,7 +131,7 @@ When invoked this function adds the tag (which defaults to the type name but can
 On first deserialization of a trait object, this linked list is traversed and each element inserted into a map. The tag is deserialized and looked up in this map to select the appropriate concrete deserialization function.
 
 ##### Pros
-* Resiliant to source code changes; expecially so when tags are provided explicitly.
+* Resilient to source code changes; especially so when tags are provided explicitly.
 ##### Cons
 * Doesn't work with closures, generic types or unnameable types.
 * Doesn't solve distributed computing use case

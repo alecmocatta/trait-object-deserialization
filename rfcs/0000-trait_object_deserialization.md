@@ -110,24 +110,58 @@ Why should we *not* do this?
 
 ## Rust
 
-[`typetag`](https://github.com/dtolnay/typetag).
+#### [`typetag`](https://github.com/dtolnay/typetag): Deserializes trait objects where the type is concrete and nameable.
 
-Deserializing trait objects is possible today, but only in a rather hairy manner. The crate [`serde_traitobject`](https://github.com/alecmocatta/serde_traitobject) for example works and sees usage, but it has two unsoundness vectors:
+It requires implementations of the trait to be tagged like so:
+```rust
+#[typetag::serde]
+impl WebEvent for PageLoad {}
+```
+For each such tag, appending linkage is used to add an initialization/constructor function to be called by the C runtime before `main()`:
+```rust
+#[used]
+#[cfg_attr(target_os = "linux", link_section = ".init_array")]
+#[cfg_attr(target_os = "freebsd", link_section = ".init_array")]
+#[cfg_attr(target_os = "macos", link_section = "__DATA,__mod_init_func")]
+#[cfg_attr(windows, link_section = ".CRT$XCU")]
+static _: fn() = ...;
+```
+When invoked this function adds the tag (which defaults to the type name but can be provided explicitly) with the concrete deserialization function to a static linked list.
+
+On first deserialization of a trait object, this linked list is traversed and each element inserted into a map. The tag is deserialized and looked up in this map to select the appropriate concrete deserialization function.
+
+##### Pros
+* Resiliant to source code changes; expecially so when tags are provided explicitly.
+##### Cons
+* Doesn't work with closures, generic types or unnameable types.
+* Doesn't solve distributed computing use case
+
+#### [`serde_traitobject`](https://github.com/alecmocatta/serde_traitobject): Deserializes arbitrary trait objects where they were serialized by the same binary (though potentially a different process).
+
+It has two unsoundness vectors:
 
 * a malicious MITM (who could forge ostensibly-valid but unsound data); and
 * multiple vtable segments in a single binary that are loaded at inconsistent relative addresses.
 
-The latter requires a very odd linker script and is unlikely to occur in practise; the former is concerning and rules out many use cases. It is however sufficient for other use cases – in fact a really cool one using it was published recently: [`native_spark`](https://github.com/rajasekarv/native_spark).
+The latter requires a very odd linker script and is unlikely to occur in practise; the former is concerning and rules out many use cases. It is however sufficient for other use cases<sup>2</sup>.
+
+##### Pros
+* Work with closures, generic types or unnameable types.
+* Solves distributed computing use case.
+##### Cons
+* Requires deserialization in the same binary that performed serialization;
+* Critical security hazard.
+
+## Other AOT compilation languages
+
+* C++: [HPX](http://stellar-group.org/libraries/hpx/) general purpose C++ runtime system for parallel and distributed applications: Serializes functions by registering them in a global map. https://stellar-group.github.io/hpx/docs/sphinx/latest/html/manual/writing_distributed_hpx_applications.html#applying-actions
+* Haskell: [Cloud Haskell](http://haskell-distributed.github.io/) https://www.microsoft.com/en-us/research/wp-content/uploads/2016/07/remote.pdf https://github.com/haskell-distributed/distributed-static/blob/master/src/Control/Distributed/Static.hs https://downloads.haskell.org/~ghc/latest/docs/html/users_guide/glasgow_exts.html#extension-StaticPointers
 
 ## JIT compilation / interpreted languages
 
 * Python: pickle
 * Java: https://docs.oracle.com/en/java/javase/13/docs/api/java.base/java/lang/invoke/SerializedLambda.html
 * Scala: http://erikerlandson.github.io/blog/2015/03/31/hygienic-closures-for-scala-function-serialization/
-
-## AOT compilation languages
-
-* C++: [HPX](http://stellar-group.org/libraries/hpx/) general purpose C++ runtime system for parallel and distributed applications: Serializes functions by registering them in a global map. https://stellar-group.github.io/hpx/docs/sphinx/latest/html/manual/writing_distributed_hpx_applications.html#applying-actions
 
 <!--
 Discuss prior art, both the good and the bad, in relation to this proposal.

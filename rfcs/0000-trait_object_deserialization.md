@@ -154,8 +154,22 @@ The latter requires a very odd linker script and is unlikely to occur in practis
 
 ## Other AOT compilation languages
 
-* C++: [HPX](http://stellar-group.org/libraries/hpx/) general purpose C++ runtime system for parallel and distributed applications: Serializes functions by registering them in a global map. https://stellar-group.github.io/hpx/docs/sphinx/latest/html/manual/writing_distributed_hpx_applications.html#applying-actions
-* Haskell: [Cloud Haskell](http://haskell-distributed.github.io/) https://www.microsoft.com/en-us/research/wp-content/uploads/2016/07/remote.pdf https://github.com/haskell-distributed/distributed-static/blob/master/src/Control/Distributed/Static.hs https://downloads.haskell.org/~ghc/latest/docs/html/users_guide/glasgow_exts.html#extension-StaticPointers
+### C++
+
+#### [HPX](http://stellar-group.org/libraries/hpx/) general purpose C++ runtime system for parallel and distributed applications
+
+Serializes functions by registering them in a global map. https://stellar-group.github.io/hpx/docs/sphinx/latest/html/manual/writing_distributed_hpx_applications.html#applying-actions
+
+### Haskell
+
+#### [Cloud Haskell](https://haskell-distributed.github.io/): Erlang-style concurrent and distributed programming in Haskell
+
+https://www.microsoft.com/en-us/research/wp-content/uploads/2016/07/remote.pdf https://github.com/haskell-distributed/distributed-static/blob/master/src/Control/Distributed/Static.hs https://downloads.haskell.org/~ghc/latest/docs/html/users_guide/glasgow_exts.html#extension-StaticPointers
+
+#### [`distributed-closure`](https://github.com/tweag/distributed-closure): distributed programming using lightweight serializable closures
+
+##### Cons
+* Critical security hazard.
 
 ## JIT compilation / interpreted languages
 
